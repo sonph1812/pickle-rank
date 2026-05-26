@@ -33,15 +33,8 @@ export class PlayersService {
   }
 
   async findAll(): Promise<any[]> {
-    // Fetch all players (no DB-level sort for computed fields)
     const players = await this.playerModel.find().exec();
 
-    // Multi-criteria sort in JS:
-    // 1. Points (desc)          — ai thắng nhiều hơn thì đứng trên
-    // 2. Win rate (desc)        — cùng điểm thì tỉ lệ thắng cao hơn xếp trên
-    // 3. goalsDifference (desc) — vẫn bằng thì nhìn hiệu số
-    // 4. wins raw (desc)        — hiệu số bằng thì nhìn số thắng thô
-    // 5. name A→Z               — tất cả bằng thì sort theo tên
     const sorted = players.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
 

@@ -1,8 +1,9 @@
-// State management
 let players = [];
+let currentTab = 'leaderboard';
+let selectedPlayerIds = new Set();
 const API_URL = '/api/players';
 
-// DOM Elements
+
 const leaderboardBody = document.getElementById('leaderboard-body');
 const teamCountBadge = document.getElementById('team-count');
 const statTotalTeams = document.getElementById('stat-total-teams');
@@ -19,7 +20,7 @@ const fieldLosses = document.getElementById('field-losses');
 const fieldGd = document.getElementById('field-gd');
 const previewPoints = document.getElementById('preview-points');
 
-// Image upload DOM Elements
+
 const logoPreview = document.getElementById('logo-preview');
 const fieldLogoFile = document.getElementById('field-logo-file');
 const btnUploadTrigger = document.getElementById('btn-upload-trigger');
@@ -31,23 +32,23 @@ const btnCloseModal = document.getElementById('btn-close-modal');
 const btnCancelModal = document.getElementById('btn-cancel-modal');
 const toastContainer = document.getElementById('toast-container');
 
-// Event Listeners
+
 document.addEventListener('DOMContentLoaded', init);
 btnAddTeam.addEventListener('click', () => openModal());
 btnCloseModal.addEventListener('click', closeModal);
 btnCancelModal.addEventListener('click', closeModal);
 teamForm.addEventListener('submit', handleFormSubmit);
 
-// Trigger file selector when clicking button
+
 btnUploadTrigger.addEventListener('click', () => fieldLogoFile.click());
 
-// Handle file selection and nén ảnh
+
 fieldLogoFile.addEventListener('change', handleFileSelect);
 
-// Remove logo selection
+
 btnRemoveLogo.addEventListener('click', clearLogoSelection);
 
-// Realtime points calculation in modal (wins * 3)
+
 fieldWins.addEventListener('input', updatePointsPreview);
 
 // Toast Notifications System
@@ -84,16 +85,16 @@ async function init() {
   await fetchPlayers();
 }
 
-// Fetch all players from REST API
 async function fetchPlayers() {
   try {
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error('Không thể tải dữ liệu người chơi');
-    
+
     players = await response.json();
     renderLeaderboard();
     updateStatsDashboard();
     renderTicker();
+    if (currentTab === 'pairing') renderPlayerSelector();
   } catch (error) {
     showToast(error.message, 'error');
     leaderboardBody.innerHTML = `
@@ -106,7 +107,7 @@ async function fetchPlayers() {
   }
 }
 
-// Render Leaderboard table (excluding Draws column)
+
 function renderLeaderboard() {
   if (players.length === 0) {
     leaderboardBody.innerHTML = `
@@ -447,6 +448,134 @@ window.deletePlayer = async function(id, name) {
     showToast(error.message, 'error');
   }
 };
+
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`content-${tab}`).classList.add('active');
+  document.getElementById(`tab-btn-${tab}`).classList.add('active');
+
+  const addBtn = document.getElementById('btn-add-team');
+  if (addBtn) addBtn.style.display = tab === 'leaderboard' ? 'inline-flex' : 'none';
+
+  if (tab === 'pairing') renderPlayerSelector();
+}
+
+function renderPlayerSelector() {
+  const grid = document.getElementById('player-check-grid');
+  if (!grid) return;
+
+  if (players.length === 0) {
+    grid.innerHTML = `<p style="padding:30px;color:var(--text-muted);text-align:center;">Chưa có người chơi nào.</p>`;
+    return;
+  }
+
+  grid.innerHTML = players.map(player => {
+    const initials = player.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    const avatarHtml = player.logo
+      ? `<img class="team-logo-img" src="${player.logo}" alt="${escapeHTML(player.name)}">`
+      : `<div class="team-logo-placeholder">${initials}</div>`;
+    const isSelected = selectedPlayerIds.has(player._id);
+    return `
+      <div class="player-check-card ${isSelected ? 'selected' : ''}" onclick="togglePlayerSelection('${player._id}')" id="check-card-${player._id}">
+        <div class="check-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        ${avatarHtml}
+        <div class="check-info">
+          <div class="check-name">${escapeHTML(player.name)}</div>
+          <div class="check-rank">Hạng #${player.rank} · ${player.points}đ</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  updateSelectionUI();
+}
+
+function togglePlayerSelection(id) {
+  if (selectedPlayerIds.has(id)) {
+    selectedPlayerIds.delete(id);
+  } else {
+    selectedPlayerIds.add(id);
+  }
+  const card = document.getElementById(`check-card-${id}`);
+  if (card) card.classList.toggle('selected', selectedPlayerIds.has(id));
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const count = selectedPlayerIds.size;
+  const el = document.getElementById('selected-count');
+  if (el) el.textContent = count;
+  const btn = document.getElementById('btn-do-pairing');
+  if (btn) btn.disabled = count < 2;
+}
+
+function clearSelection() {
+  selectedPlayerIds.clear();
+  document.querySelectorAll('.player-check-card').forEach(c => c.classList.remove('selected'));
+  updateSelectionUI();
+  const result = document.getElementById('pairing-result');
+  const actions = document.getElementById('pairing-actions');
+  if (result) result.style.display = 'none';
+  if (actions) actions.style.display = 'none';
+}
+
+function doPairing() {
+  const selected = players.filter(p => selectedPlayerIds.has(p._id));
+  selected.sort((a, b) => a.rank - b.rank);
+
+  const teamA = [];
+  const teamB = [];
+
+  selected.forEach((player, i) => {
+    const round = Math.floor(i / 2);
+    const pos = i % 2;
+    if (round % 2 === 0) {
+      pos === 0 ? teamA.push(player) : teamB.push(player);
+    } else {
+      pos === 0 ? teamB.push(player) : teamA.push(player);
+    }
+  });
+
+  renderPairingResult(teamA, teamB);
+}
+
+function renderPairingResult(teamA, teamB) {
+  const resultDiv = document.getElementById('pairing-result');
+  const actionsDiv = document.getElementById('pairing-actions');
+  if (!resultDiv) return;
+
+  resultDiv.style.display = 'grid';
+  if (actionsDiv) actionsDiv.style.display = 'block';
+
+  document.getElementById('team-a-count').textContent = `${teamA.length} người chơi`;
+  document.getElementById('team-b-count').textContent = `${teamB.length} người chơi`;
+
+  const renderPlayers = (list) => list.map(p => {
+    const initials = p.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    const avatarHtml = p.logo
+      ? `<img class="team-logo-img" src="${p.logo}" alt="${escapeHTML(p.name)}">`
+      : `<div class="team-logo-placeholder">${initials}</div>`;
+    return `
+      <div class="team-player-item">
+        ${avatarHtml}
+        <div>
+          <div class="team-player-name">${escapeHTML(p.name)}</div>
+          <div class="team-player-meta">Hạng #${p.rank} · ${p.points}đ</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('team-a-players').innerHTML = renderPlayers(teamA);
+  document.getElementById('team-b-players').innerHTML = renderPlayers(teamB);
+
+  resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // Utilities
 function escapeHTML(str) {
