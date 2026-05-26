@@ -93,6 +93,7 @@ async function fetchPlayers() {
     players = await response.json();
     renderLeaderboard();
     updateStatsDashboard();
+    renderTicker();
   } catch (error) {
     showToast(error.message, 'error');
     leaderboardBody.innerHTML = `
@@ -193,6 +194,59 @@ function updateStatsDashboard() {
     statTopTeam.textContent = '-';
     statTopTeam.style.color = 'var(--text-main)';
   }
+}
+
+// Render Top 3 Players Ticker
+function renderTicker() {
+  const tickerWrap = document.getElementById('top-players-ticker');
+  const tickerItems = document.getElementById('ticker-items');
+  if (!tickerWrap || !tickerItems) return;
+
+  const top3 = players.filter(p => p.rank <= 3);
+  if (top3.length === 0) {
+    tickerWrap.style.display = 'none';
+    return;
+  }
+
+  tickerWrap.style.display = 'flex';
+
+  const itemsHtml = top3.map(player => {
+    let badgeClass = '';
+    let medal = '';
+    if (player.rank === 1) {
+      badgeClass = 'badge-1';
+      medal = '🥇';
+    } else if (player.rank === 2) {
+      badgeClass = 'badge-2';
+      medal = '🥈';
+    } else {
+      badgeClass = 'badge-3';
+      medal = '🥉';
+    }
+
+    const initials = player.name
+      .split(' ')
+      .filter(word => word.trim().length > 0)
+      .map(word => word[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase() || '👤';
+
+    const avatarHtml = player.logo
+      ? `<img class="ticker__item-avatar" src="${player.logo}" alt="${escapeHTML(player.name)}">`
+      : `<div class="ticker__item-avatar-placeholder">${initials}</div>`;
+
+    return `
+      <div class="ticker__item">
+        <span class="badge ${badgeClass}">${medal} TOP ${player.rank}</span>
+        ${avatarHtml}
+        <span>${escapeHTML(player.name)} (${player.points}đ - Hiệu số ${player.goalsDifference > 0 ? '+' : ''}${player.goalsDifference})</span>
+      </div>
+    `;
+  }).join('');
+
+  // Duplicate items to ensure seamless infinite scrolling marquee
+  tickerItems.innerHTML = itemsHtml + itemsHtml + itemsHtml + itemsHtml;
 }
 
 // File Select and Canvas Compression Logic
