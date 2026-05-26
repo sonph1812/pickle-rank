@@ -1,21 +1,20 @@
-/* Global reset and styling rules */
 :root {
   --font-family: 'Outfit', sans-serif;
   
-  /* Color Palette */
-  --bg-primary: #0a0814;
-  --bg-secondary: rgba(22, 19, 39, 0.6);
-  --bg-card: rgba(30, 27, 54, 0.4);
+  /* Color Palette - Premium Sports Grass Green Theme */
+  --bg-primary: #040805;
+  --bg-secondary: rgba(12, 24, 15, 0.65);
+  --bg-card: rgba(20, 38, 25, 0.45);
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(124, 77, 255, 0.2);
+  --border-glow: rgba(0, 230, 118, 0.2);
   
-  --text-main: #f3f1f8;
-  --text-muted: #8b88a1;
+  --text-main: #f5fbf6;
+  --text-muted: #8da192;
   
   /* Accent Colors */
-  --primary: #7c4dff;
-  --primary-glow: rgba(124, 77, 255, 0.4);
-  --primary-hover: #9e75ff;
+  --primary: #00e676;
+  --primary-glow: rgba(0, 230, 118, 0.4);
+  --primary-hover: #5df29d;
   
   --accent-green: #00e676;
   --accent-red: #ff1744;
@@ -74,7 +73,7 @@ body {
 .glow-2 {
   width: 600px;
   height: 600px;
-  background: var(--accent-blue);
+  background: var(--accent-yellow);
   bottom: -15%;
   left: -10%;
 }

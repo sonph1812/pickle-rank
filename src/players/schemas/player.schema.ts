@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type TeamDocument = Team & Document;
+export type PlayerDocument = Player & Document;
 
 @Schema({
   timestamps: true,
@@ -14,12 +14,12 @@ export type TeamDocument = Team & Document;
     },
   },
 })
-export class Team {
+export class Player {
   @Prop({ required: true, trim: true })
   name: string;
 
   @Prop({ required: false })
-  logo: string;
+  logo: string; // Base64 avatar of the player
 
   @Prop({ default: 0 })
   wins: number;
@@ -37,10 +37,10 @@ export class Team {
   played: number;
 }
 
-export const TeamSchema = SchemaFactory.createForClass(Team);
+export const PlayerSchema = SchemaFactory.createForClass(Player);
 
 // Pre-save hook to calculate points and played matches automatically
-TeamSchema.pre('save', function () {
+PlayerSchema.pre('save', function () {
   this.played = (this.wins || 0) + (this.losses || 0);
   this.points = (this.wins || 0) * 3;
 });

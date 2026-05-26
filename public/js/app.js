@@ -1,6 +1,6 @@
 // State management
-let teams = [];
-const API_URL = '/api/teams';
+let players = [];
+const API_URL = '/api/players';
 
 // DOM Elements
 const leaderboardBody = document.getElementById('leaderboard-body');
@@ -81,16 +81,16 @@ function showToast(message, type = 'success') {
 
 // Initial Loading
 async function init() {
-  await fetchTeams();
+  await fetchPlayers();
 }
 
-// Fetch all teams from REST API
-async function fetchTeams() {
+// Fetch all players from REST API
+async function fetchPlayers() {
   try {
     const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Không thể tải dữ liệu đội bóng');
+    if (!response.ok) throw new Error('Không thể tải dữ liệu thành viên');
     
-    teams = await response.json();
+    players = await response.json();
     renderLeaderboard();
     updateStatsDashboard();
   } catch (error) {
@@ -107,64 +107,64 @@ async function fetchTeams() {
 
 // Render Leaderboard table (excluding Draws column)
 function renderLeaderboard() {
-  if (teams.length === 0) {
+  if (players.length === 0) {
     leaderboardBody.innerHTML = `
       <tr>
-        <td colspan="8" class="td-empty">Chưa có đội bóng nào được tạo. Hãy nhấn "Thêm Đội Bóng".</td>
+        <td colspan="8" class="td-empty">Chưa có thành viên nào được tạo. Hãy nhấn "Thêm Thành Viên".</td>
       </tr>
     `;
     teamCountBadge.textContent = '0';
     return;
   }
 
-  teamCountBadge.textContent = teams.length;
+  teamCountBadge.textContent = players.length;
   
-  leaderboardBody.innerHTML = teams.map(team => {
+  leaderboardBody.innerHTML = players.map(player => {
     let rankBadgeClass = 'rank-other';
-    if (team.rank === 1) rankBadgeClass = 'rank-1';
-    else if (team.rank === 2) rankBadgeClass = 'rank-2';
-    else if (team.rank === 3) rankBadgeClass = 'rank-3';
+    if (player.rank === 1) rankBadgeClass = 'rank-1';
+    else if (player.rank === 2) rankBadgeClass = 'rank-2';
+    else if (player.rank === 3) rankBadgeClass = 'rank-3';
     
-    const gdClass = team.goalsDifference > 0 ? 'gd-positive' : (team.goalsDifference < 0 ? 'gd-negative' : '');
-    const gdPrefix = team.goalsDifference > 0 ? '+' : '';
+    const gdClass = player.goalsDifference > 0 ? 'gd-positive' : (player.goalsDifference < 0 ? 'gd-negative' : '');
+    const gdPrefix = player.goalsDifference > 0 ? '+' : '';
 
     // Create a beautiful avatar with initials as placeholder
-    const initials = team.name
+    const initials = player.name
       .split(' ')
       .filter(word => word.trim().length > 0)
       .map(word => word[0])
       .join('')
       .substring(0, 2)
-      .toUpperCase() || '⚽';
+      .toUpperCase() || '👤';
 
-    const logoHtml = team.logo 
-      ? `<img class="team-logo-img" src="${team.logo}" alt="${escapeHTML(team.name)}">`
+    const logoHtml = player.logo 
+      ? `<img class="team-logo-img" src="${player.logo}" alt="${escapeHTML(player.name)}">`
       : `<div class="team-logo-placeholder">${initials}</div>`;
 
     return `
-      <tr data-id="${team.id}">
+      <tr data-id="${player.id}">
         <td class="col-rank">
-          <span class="rank-badge ${rankBadgeClass}">${team.rank}</span>
+          <span class="rank-badge ${rankBadgeClass}">${player.rank}</span>
         </td>
         <td class="col-name">
           <div class="team-identity">
             ${logoHtml}
-            <span>${escapeHTML(team.name)}</span>
+            <span>${escapeHTML(player.name)}</span>
           </div>
         </td>
-        <td class="col-played">${team.played}</td>
-        <td class="col-win">${team.wins}</td>
-        <td class="col-loss">${team.losses}</td>
-        <td class="col-gd ${gdClass}">${gdPrefix}${team.goalsDifference}</td>
-        <td class="col-points"><span class="point-text">${team.points}</span></td>
+        <td class="col-played">${player.played}</td>
+        <td class="col-win">${player.wins}</td>
+        <td class="col-loss">${player.losses}</td>
+        <td class="col-gd ${gdClass}">${gdPrefix}${player.goalsDifference}</td>
+        <td class="col-points"><span class="point-text">${player.points}</span></td>
         <td class="col-actions">
-          <button onclick="editTeam('${team.id}')" class="btn-action btn-action-edit" title="Chỉnh sửa">
+          <button onclick="editPlayer('${player.id}')" class="btn-action btn-action-edit" title="Chỉnh sửa">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
           </button>
-          <button onclick="deleteTeam('${team.id}', '${escapeHTML(team.name)}')" class="btn-action btn-action-delete" title="Xóa">
+          <button onclick="deletePlayer('${player.id}', '${escapeHTML(player.name)}')" class="btn-action btn-action-delete" title="Xóa">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -180,14 +180,14 @@ function renderLeaderboard() {
 
 // Update upper dashboard status numbers
 function updateStatsDashboard() {
-  statTotalTeams.textContent = teams.length;
+  statTotalTeams.textContent = players.length;
   
   // Total matches played in league
-  const totalMatches = teams.reduce((acc, team) => acc + team.played, 0) / 2;
+  const totalMatches = players.reduce((acc, player) => acc + player.played, 0) / 2;
   statTotalMatches.textContent = Math.round(totalMatches);
   
-  if (teams.length > 0) {
-    statTopTeam.textContent = teams[0].name;
+  if (players.length > 0) {
+    statTopTeam.textContent = players[0].name;
     statTopTeam.style.color = 'var(--accent-yellow)';
   } else {
     statTopTeam.textContent = '-';
@@ -246,7 +246,6 @@ function handleFileSelect(event) {
       canvas.height = height;
 
       const ctx = canvas.getContext('2d');
-      // Draw white background in case of transparent png
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
@@ -261,7 +260,7 @@ function handleFileSelect(event) {
       logoPreview.innerHTML = `<img src="${compressedDataUrl}" alt="Preview">`;
       btnRemoveLogo.style.display = 'inline-flex';
       
-      showToast('Nén và nạp ảnh thành công!', 'success');
+      showToast('Nạp và tối ưu ảnh đại diện thành công!', 'success');
     };
 
     img.onerror = function() {
@@ -274,35 +273,35 @@ function handleFileSelect(event) {
 function clearLogoSelection() {
   fieldLogoFile.value = '';
   fieldLogoBase64.value = '';
-  logoPreview.innerHTML = '<span class="placeholder-icon">⚽</span>';
+  logoPreview.innerHTML = '<span class="placeholder-icon">👤</span>';
   btnRemoveLogo.style.display = 'none';
 }
 
 // Modal handling
-function openModal(teamId = null) {
+function openModal(playerId = null) {
   teamForm.reset();
   clearLogoSelection();
   
-  if (teamId) {
-    const team = teams.find(t => t.id === teamId);
-    if (!team) return;
+  if (playerId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
     
-    modalTitle.textContent = 'Cập Nhật Đội Bóng';
-    fieldId.value = team.id;
-    fieldName.value = team.name;
-    fieldWins.value = team.wins;
-    fieldLosses.value = team.losses;
-    fieldGd.value = team.goalsDifference;
+    modalTitle.textContent = 'Cập Nhật Thành Viên';
+    fieldId.value = player.id;
+    fieldName.value = player.name;
+    fieldWins.value = player.wins;
+    fieldLosses.value = player.losses;
+    fieldGd.value = player.goalsDifference;
     
-    if (team.logo) {
-      fieldLogoBase64.value = team.logo;
-      logoPreview.innerHTML = `<img src="${team.logo}" alt="Preview">`;
+    if (player.logo) {
+      fieldLogoBase64.value = player.logo;
+      logoPreview.innerHTML = `<img src="${player.logo}" alt="Preview">`;
       btnRemoveLogo.style.display = 'inline-flex';
     }
     
     updatePointsPreview();
   } else {
-    modalTitle.textContent = 'Thêm Đội Bóng Mới';
+    modalTitle.textContent = 'Thêm Thành Viên Mới';
     fieldId.value = '';
     previewPoints.textContent = '0';
   }
@@ -359,22 +358,22 @@ async function handleFormSubmit(event) {
       throw new Error('Đã có lỗi xảy ra khi lưu thông tin');
     }
     
-    showToast(isEdit ? `Cập nhật đội "${name}" thành công!` : `Thêm đội "${name}" thành công!`, 'success');
+    showToast(isEdit ? `Cập nhật thành viên "${name}" thành công!` : `Thêm thành viên "${name}" thành công!`, 'success');
     closeModal();
-    fetchTeams();
+    fetchPlayers();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
 // Trigger edit modal
-window.editTeam = function(id) {
+window.editPlayer = function(id) {
   openModal(id);
 };
 
-// Handle delete team
-window.deleteTeam = async function(id, name) {
-  if (!confirm(`Bạn có chắc chắn muốn xóa đội "${name}" khỏi bảng xếp hạng? Thao tác này không thể hoàn tác.`)) {
+// Handle delete player
+window.deletePlayer = async function(id, name) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa thành viên "${name}" khỏi bảng xếp hạng? Thao tác này không thể hoàn tác.`)) {
     return;
   }
   
@@ -385,11 +384,11 @@ window.deleteTeam = async function(id, name) {
     
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.message || 'Không thể xóa đội bóng');
+      throw new Error(data.message || 'Không thể xóa thành viên');
     }
     
-    showToast(`Đã xóa đội "${name}" khỏi bảng xếp hạng!`, 'success');
-    fetchTeams();
+    showToast(`Đã xóa thành viên "${name}" khỏi bảng xếp hạng!`, 'success');
+    fetchPlayers();
   } catch (error) {
     showToast(error.message, 'error');
   }

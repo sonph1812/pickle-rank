@@ -1,8 +1,8 @@
 import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
 
-export class CreateTeamDto {
+export class CreatePlayerDto {
   @IsString()
-  @IsNotEmpty({ message: 'Tên đội/trận đấu không được để trống' })
+  @IsNotEmpty({ message: 'Tên thành viên không được để trống' })
   name: string;
 
   @IsOptional()

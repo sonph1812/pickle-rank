@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { TeamsModule } from './teams/teams.module';
+import { PlayersModule } from './players/players.module';
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { TeamsModule } from './teams/teams.module';
       rootPath: join(process.cwd(), 'public'),
     }),
     // Business logic modules
-    TeamsModule,
+    PlayersModule,
   ],
 })
 export class AppModule {}
