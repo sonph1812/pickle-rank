@@ -1,6 +1,7 @@
 let players = [];
 let currentTab = 'leaderboard';
 let selectedPlayerIds = new Set();
+let currentMatches = [];
 const API_URL = '/api/players';
 
 
@@ -569,6 +570,7 @@ function doPairing() {
     const matchCount = Math.floor(pool.length / 2);
     for (let i = 0; i < matchCount; i++) {
       matches.push({
+        id: `match-${i}`,
         type: 'singles',
         player1: pool[i * 2],
         player2: pool[i * 2 + 1]
@@ -593,6 +595,7 @@ function doPairing() {
       for (let i = 0; i < matchCount; i++) {
         const group = activePool.slice(i * 4, (i + 1) * 4);
         matches.push({
+          id: `match-${i}`,
           type: 'doubles',
           team1: [group[0], group[3]], // strong + weak
           team2: [group[1], group[2]]  // mid + mid
@@ -603,6 +606,7 @@ function doPairing() {
       for (let i = 0; i < matchCount; i++) {
         const group = activePool.slice(i * 4, (i + 1) * 4);
         matches.push({
+          id: `match-${i}`,
           type: 'doubles',
           team1: [group[0], group[1]],
           team2: [group[2], group[3]]
@@ -611,6 +615,7 @@ function doPairing() {
     }
   }
 
+  currentMatches = matches;
   renderPairingResult(matches, waiting);
 }
 
@@ -650,7 +655,7 @@ function renderPairingResult(matches, waiting) {
         : `<div class="team-logo-placeholder">${initials2}</div>`;
 
       html += `
-        <div class="matchup-card">
+        <div class="matchup-card" id="match-card-${match.id}">
           <div class="matchup-header">
             <span>Trận Đấu Đơn #${index + 1}</span>
             <span class="matchup-header-badge">1 vs 1</span>
@@ -675,6 +680,15 @@ function renderPairingResult(matches, waiting) {
                 </div>
               </div>
             </div>
+          </div>
+          <div class="matchup-score-bar" id="score-bar-${match.id}">
+            <input type="number" min="0" placeholder="0" class="score-input" id="score-1-${match.id}">
+            <span class="score-dash">:</span>
+            <input type="number" min="0" placeholder="0" class="score-input" id="score-2-${match.id}">
+            <button class="btn-record" onclick="recordMatchScore('${match.id}', false)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Ghi nhận
+            </button>
           </div>
         </div>
       `;
@@ -702,7 +716,7 @@ function renderPairingResult(matches, waiting) {
       };
 
       html += `
-        <div class="matchup-card">
+        <div class="matchup-card" id="match-card-${match.id}">
           <div class="matchup-header">
             <span>Trận Đấu Đôi #${index + 1}</span>
             <span class="matchup-header-badge">2 vs 2</span>
@@ -717,6 +731,15 @@ function renderPairingResult(matches, waiting) {
               ${renderPlayerRow(t2p1)}
               ${renderPlayerRow(t2p2)}
             </div>
+          </div>
+          <div class="matchup-score-bar" id="score-bar-${match.id}">
+            <input type="number" min="0" placeholder="0" class="score-input" id="score-1-${match.id}">
+            <span class="score-dash">:</span>
+            <input type="number" min="0" placeholder="0" class="score-input" id="score-2-${match.id}">
+            <button class="btn-record" onclick="recordMatchScore('${match.id}', true)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Ghi nhận
+            </button>
           </div>
         </div>
       `;
@@ -762,12 +785,174 @@ function renderPairingResult(matches, waiting) {
   resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+async function recordMatchScore(matchId, isDoubles) {
+  const match = currentMatches.find(m => m.id === matchId);
+  if (!match) {
+    showToast('Không tìm thấy thông tin trận đấu!', 'error');
+    return;
+  }
+
+  const score1Input = document.getElementById(`score-1-${matchId}`);
+  const score2Input = document.getElementById(`score-2-${matchId}`);
+  if (!score1Input || !score2Input) return;
+
+  const score1Val = score1Input.value.trim();
+  const score2Val = score2Input.value.trim();
+
+  if (score1Val === '' || score2Val === '') {
+    showToast('Vui lòng nhập đầy đủ điểm số của cả hai bên!', 'error');
+    return;
+  }
+
+  const s1 = parseInt(score1Val);
+  const s2 = parseInt(score2Val);
+
+  if (isNaN(s1) || isNaN(s2) || s1 < 0 || s2 < 0) {
+    showToast('Điểm số phải là số nguyên lớn hơn hoặc bằng 0!', 'error');
+    return;
+  }
+
+  if (s1 === s2) {
+    showToast('Trận đấu phải phân định thắng thua, không thể nhập tỷ số hòa!', 'error');
+    return;
+  }
+
+  // Disable inputs and button during update
+  const bar = document.getElementById(`score-bar-${matchId}`);
+  const btn = bar.querySelector('.btn-record');
+  score1Input.disabled = true;
+  score2Input.disabled = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⌛ Đang lưu...';
+  }
+
+  // Determine winners and losers
+  const team1Won = s1 > s2;
+  const diff = Math.abs(s1 - s2);
+
+  // Sync fresh database data first to prevent overwrite race conditions
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('Không thể đồng bộ dữ liệu người chơi mới nhất.');
+    players = await res.json();
+  } catch (err) {
+    showToast(err.message, 'error');
+    score1Input.disabled = false;
+    score2Input.disabled = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ghi nhận';
+    }
+    return;
+  }
+
+  // Identify players involved
+  let winners = [];
+  let losers = [];
+
+  if (!isDoubles) {
+    const freshP1 = players.find(p => p.id === match.player1.id);
+    const freshP2 = players.find(p => p.id === match.player2.id);
+    if (!freshP1 || !freshP2) {
+      showToast('Không tìm thấy thông tin cầu thủ trên hệ thống!', 'error');
+      return;
+    }
+    if (team1Won) {
+      winners.push(freshP1);
+      losers.push(freshP2);
+    } else {
+      winners.push(freshP2);
+      losers.push(freshP1);
+    }
+  } else {
+    const freshT1P1 = players.find(p => p.id === match.team1[0].id);
+    const freshT1P2 = players.find(p => p.id === match.team1[1].id);
+    const freshT2P1 = players.find(p => p.id === match.team2[0].id);
+    const freshT2P2 = players.find(p => p.id === match.team2[1].id);
+    if (!freshT1P1 || !freshT1P2 || !freshT2P1 || !freshT2P2) {
+      showToast('Không tìm thấy thông tin cầu thủ trên hệ thống!', 'error');
+      return;
+    }
+    if (team1Won) {
+      winners.push(freshT1P1, freshT1P2);
+      losers.push(freshT2P1, freshT2P2);
+    } else {
+      winners.push(freshT2P1, freshT2P2);
+      losers.push(freshT1P1, freshT1P2);
+    }
+  }
+
+  // Send update requests for all involved players
+  const updates = [];
+
+  winners.forEach(player => {
+    const payload = {
+      wins: player.wins + 1,
+      goalsDifference: player.goalsDifference + diff
+    };
+    updates.push(
+      fetch(`${API_URL}/${player.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+    );
+  });
+
+  losers.forEach(player => {
+    const payload = {
+      losses: player.losses + 1,
+      goalsDifference: player.goalsDifference - diff
+    };
+    updates.push(
+      fetch(`${API_URL}/${player.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+    );
+  });
+
+  try {
+    const responses = await Promise.all(updates);
+    const failed = responses.find(r => !r.ok);
+    if (failed) {
+      const errData = await failed.json();
+      throw new Error(errData.message || 'Lỗi khi cập nhật chỉ số người chơi.');
+    }
+
+    // Success! Update UI to check badge
+    bar.innerHTML = `
+      <div class="recorded-status">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Đã ghi nhận kết quả (${s1} : ${s2})
+      </div>
+    `;
+
+    showToast('Ghi nhận tỉ số và cập nhật bảng xếp hạng thành công!', 'success');
+
+    // Fetch players to refresh the main leaderboard table in real time
+    await fetchPlayers();
+  } catch (error) {
+    showToast(error.message, 'error');
+    // Re-enable in case of failure
+    score1Input.disabled = false;
+    score2Input.disabled = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ghi nhận';
+    }
+  }
+}
+
 // Bind to window for global inline handlers
 window.togglePlayerSelection = togglePlayerSelection;
 window.clearSelection = clearSelection;
 window.onPairingFormatChange = onPairingFormatChange;
 window.doPairingIfResultVisible = doPairingIfResultVisible;
 window.doPairing = doPairing;
+window.recordMatchScore = recordMatchScore;
 
 // Utilities
 function escapeHTML(str) {
