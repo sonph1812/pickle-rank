@@ -88,7 +88,7 @@ async function init() {
 async function fetchPlayers() {
   try {
     const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Không thể tải dữ liệu thành viên');
+    if (!response.ok) throw new Error('Không thể tải dữ liệu người chơi');
     
     players = await response.json();
     renderLeaderboard();
@@ -110,7 +110,7 @@ function renderLeaderboard() {
   if (players.length === 0) {
     leaderboardBody.innerHTML = `
       <tr>
-        <td colspan="8" class="td-empty">Chưa có thành viên nào được tạo. Hãy nhấn "Thêm Thành Viên".</td>
+        <td colspan="8" class="td-empty">Chưa có người chơi nào được tạo. Hãy nhấn "Thêm Người Chơi".</td>
       </tr>
     `;
     teamCountBadge.textContent = '0';
@@ -286,7 +286,7 @@ function openModal(playerId = null) {
     const player = players.find(p => p.id === playerId);
     if (!player) return;
     
-    modalTitle.textContent = 'Cập Nhật Thành Viên';
+    modalTitle.textContent = 'Cập Nhật Người Chơi';
     fieldId.value = player.id;
     fieldName.value = player.name;
     fieldWins.value = player.wins;
@@ -301,7 +301,7 @@ function openModal(playerId = null) {
     
     updatePointsPreview();
   } else {
-    modalTitle.textContent = 'Thêm Thành Viên Mới';
+    modalTitle.textContent = 'Thêm Người Chơi Mới';
     fieldId.value = '';
     previewPoints.textContent = '0';
   }
@@ -358,7 +358,7 @@ async function handleFormSubmit(event) {
       throw new Error('Đã có lỗi xảy ra khi lưu thông tin');
     }
     
-    showToast(isEdit ? `Cập nhật thành viên "${name}" thành công!` : `Thêm thành viên "${name}" thành công!`, 'success');
+    showToast(isEdit ? `Cập nhật người chơi "${name}" thành công!` : `Thêm người chơi "${name}" thành công!`, 'success');
     closeModal();
     fetchPlayers();
   } catch (error) {
@@ -373,7 +373,7 @@ window.editPlayer = function(id) {
 
 // Handle delete player
 window.deletePlayer = async function(id, name) {
-  if (!confirm(`Bạn có chắc chắn muốn xóa thành viên "${name}" khỏi bảng xếp hạng? Thao tác này không thể hoàn tác.`)) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa người chơi "${name}" khỏi bảng xếp hạng? Thao tác này không thể hoàn tác.`)) {
     return;
   }
   
@@ -384,10 +384,10 @@ window.deletePlayer = async function(id, name) {
     
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.message || 'Không thể xóa thành viên');
+      throw new Error(data.message || 'Không thể xóa người chơi');
     }
     
-    showToast(`Đã xóa thành viên "${name}" khỏi bảng xếp hạng!`, 'success');
+    showToast(`Đã xóa người chơi "${name}" khỏi bảng xếp hạng!`, 'success');
     fetchPlayers();
   } catch (error) {
     showToast(error.message, 'error');

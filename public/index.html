@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pick Player Manager | Bảng Xếp Hạng Thành Viên</title>
+  <title>Pickleball Player Manager | Bảng Xếp Hạng Người Chơi</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
         </div>
         <div class="logo-text">
           <h1>Pick<span>Pick</span></h1>
-          <p>Hệ thống Quản lý & Xếp hạng Thành viên</p>
+          <p>Hệ thống Quản lý & Xếp hạng Người chơi Pickleball</p>
         </div>
       </div>
       <div class="actions-area">
@@ -39,7 +39,7 @@
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          Thêm Thành Viên
+          Thêm Người Chơi
         </button>
       </div>
     </header>
@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <h3>Tổng Thành Viên</h3>
+          <h3>Tổng Người Chơi</h3>
           <p id="stat-total-teams">0</p>
         </div>
       </div>
@@ -70,7 +70,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <h3>Tổng Trận Đã Đá</h3>
+          <h3>Tổng Trận Đã Đấu</h3>
           <p id="stat-total-matches">0</p>
         </div>
       </div>
@@ -82,7 +82,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <h3>Thành Viên Dẫn Đầu</h3>
+          <h3>Người Chơi Dẫn Đầu</h3>
           <p id="stat-top-team">-</p>
         </div>
       </div>
@@ -92,8 +92,8 @@
     <main class="main-content">
       <div class="card leaderboard-card">
         <div class="card-header">
-          <h2>Bảng Xếp Hạng Thành Viên</h2>
-          <div class="badge-count"><span id="team-count">0</span> Cầu thủ</div>
+          <h2>Bảng Xếp Hạng Người Chơi</h2>
+          <div class="badge-count"><span id="team-count">0</span> Người chơi</div>
         </div>
         
         <div class="table-wrapper">
@@ -101,7 +101,7 @@
             <thead>
               <tr>
                 <th class="col-rank">Hạng</th>
-                <th class="col-name">Thành Viên</th>
+                <th class="col-name">Người Chơi</th>
                 <th class="col-played">Số Trận</th>
                 <th class="col-win">Thắng</th>
                 <th class="col-loss">Thua</th>
@@ -112,7 +112,7 @@
             </thead>
             <tbody id="leaderboard-body">
               <tr>
-                <td colspan="9" class="td-empty">Đang tải danh sách đội bóng...</td>
+                <td colspan="9" class="td-empty">Đang tải danh sách người chơi...</td>
               </tr>
             </tbody>
           </table>
@@ -125,7 +125,7 @@
   <div id="team-modal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="modal-title">Thêm Thành Viên Mới</h2>
+        <h2 id="modal-title">Thêm Người Chơi Mới</h2>
         <button id="btn-close-modal" class="btn-close">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -153,7 +153,7 @@
         </div>
 
         <div class="form-group">
-          <label for="field-name">Tên thành viên</label>
+          <label for="field-name">Tên người chơi</label>
           <input type="text" id="field-name" placeholder="Ví dụ: Nguyễn Văn Sơn" required>
         </div>
         
