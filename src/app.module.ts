@@ -22,8 +22,7 @@ import { TeamsModule } from './teams/teams.module';
     }),
     // Serve static files from 'public' folder
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
-      exclude: ['/api/(.*)'],
+      rootPath: join(process.cwd(), 'public'),
     }),
     // Business logic modules
     TeamsModule,
