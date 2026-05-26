@@ -477,9 +477,9 @@ function renderPlayerSelector() {
     const avatarHtml = player.logo
       ? `<img class="team-logo-img" src="${player.logo}" alt="${escapeHTML(player.name)}">`
       : `<div class="team-logo-placeholder">${initials}</div>`;
-    const isSelected = selectedPlayerIds.has(player._id);
+    const isSelected = selectedPlayerIds.has(player.id);
     return `
-      <div class="player-check-card ${isSelected ? 'selected' : ''}" onclick="togglePlayerSelection('${player._id}')" id="check-card-${player._id}">
+      <div class="player-check-card ${isSelected ? 'selected' : ''}" onclick="togglePlayerSelection('${player.id}')" id="check-card-${player.id}">
         <div class="check-indicator">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
@@ -526,7 +526,7 @@ function clearSelection() {
 }
 
 function doPairing() {
-  const selected = players.filter(p => selectedPlayerIds.has(p._id));
+  const selected = players.filter(p => selectedPlayerIds.has(p.id));
   selected.sort((a, b) => a.rank - b.rank);
 
   const teamA = [];
