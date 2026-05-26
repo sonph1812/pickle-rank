@@ -33,20 +33,34 @@ export class PlayersService {
   }
 
   async findAll(): Promise<any[]> {
-    // Sort by points desc, goalsDifference desc, wins desc, then name asc
-    const players = await this.playerModel
-      .find()
-      .sort({ points: -1, goalsDifference: -1, wins: -1, name: 1 })
-      .exec();
+    // Fetch all players (no DB-level sort for computed fields)
+    const players = await this.playerModel.find().exec();
 
-    // Dynamically assign rankings based on sorted order
-    return players.map((player, index) => {
-      const playerObj = player.toJSON();
-      return {
-        ...playerObj,
-        rank: index + 1,
-      };
+    // Multi-criteria sort in JS:
+    // 1. Points (desc)          — ai thắng nhiều hơn thì đứng trên
+    // 2. Win rate (desc)        — cùng điểm thì tỉ lệ thắng cao hơn xếp trên
+    // 3. goalsDifference (desc) — vẫn bằng thì nhìn hiệu số
+    // 4. wins raw (desc)        — hiệu số bằng thì nhìn số thắng thô
+    // 5. name A→Z               — tất cả bằng thì sort theo tên
+    const sorted = players.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+
+      const rateA = a.played > 0 ? a.wins / a.played : 0;
+      const rateB = b.played > 0 ? b.wins / b.played : 0;
+      if (rateB !== rateA) return rateB - rateA;
+
+      if (b.goalsDifference !== a.goalsDifference)
+        return b.goalsDifference - a.goalsDifference;
+
+      if (b.wins !== a.wins) return b.wins - a.wins;
+
+      return a.name.localeCompare(b.name, 'vi');
     });
+
+    return sorted.map((player, index) => ({
+      ...player.toJSON(),
+      rank: index + 1,
+    }));
   }
 
   async findOne(id: string): Promise<Player> {
