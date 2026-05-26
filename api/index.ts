@@ -17,6 +17,10 @@ export const bootstrap = async () => {
 let cachedServer: any;
 
 export default async (req: any, res: any) => {
+  console.log('[Vercel Entrypoint] Original URL:', req.url);
+  console.log('[Vercel Entrypoint] Original Method:', req.method);
+  console.log('[Vercel Entrypoint] Headers:', JSON.stringify(req.headers));
+
   if (!cachedServer) {
     cachedServer = await bootstrap();
   }
