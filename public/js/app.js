@@ -505,14 +505,31 @@ function togglePlayerSelection(id) {
   const card = document.getElementById(`check-card-${id}`);
   if (card) card.classList.toggle('selected', selectedPlayerIds.has(id));
   updateSelectionUI();
+  doPairingIfResultVisible();
 }
 
 function updateSelectionUI() {
   const count = selectedPlayerIds.size;
   const el = document.getElementById('selected-count');
   if (el) el.textContent = count;
+  
   const btn = document.getElementById('btn-do-pairing');
-  if (btn) btn.disabled = count < 2;
+  if (btn) {
+    const format = document.querySelector('input[name="pairing-format"]:checked')?.value || 'singles';
+    btn.disabled = format === 'doubles' ? count < 4 : count < 2;
+  }
+}
+
+function onPairingFormatChange() {
+  updateSelectionUI();
+  doPairingIfResultVisible();
+}
+
+function doPairingIfResultVisible() {
+  const resultDiv = document.getElementById('pairing-result');
+  if (resultDiv && resultDiv.style.display !== 'none') {
+    doPairing();
+  }
 }
 
 function clearSelection() {
@@ -521,61 +538,236 @@ function clearSelection() {
   updateSelectionUI();
   const result = document.getElementById('pairing-result');
   const actions = document.getElementById('pairing-actions');
-  if (result) result.style.display = 'none';
+  if (result) {
+    result.style.display = 'none';
+    result.innerHTML = '';
+  }
   if (actions) actions.style.display = 'none';
 }
 
 function doPairing() {
   const selected = players.filter(p => selectedPlayerIds.has(p.id));
-  selected.sort((a, b) => a.rank - b.rank);
+  const format = document.querySelector('input[name="pairing-format"]:checked')?.value || 'singles';
+  const algo = document.querySelector('input[name="pairing-algo"]:checked')?.value || 'balanced';
 
-  const teamA = [];
-  const teamB = [];
+  let pool = [...selected];
 
-  selected.forEach((player, i) => {
-    const round = Math.floor(i / 2);
-    const pos = i % 2;
-    if (round % 2 === 0) {
-      pos === 0 ? teamA.push(player) : teamB.push(player);
-    } else {
-      pos === 0 ? teamB.push(player) : teamA.push(player);
+  // Shuffle if random
+  if (algo === 'random') {
+    pool.sort(() => Math.random() - 0.5);
+  } else {
+    // Balanced: sort by rank ascending (strongest first)
+    pool.sort((a, b) => a.rank - b.rank);
+  }
+
+  const matches = [];
+  const waiting = [];
+
+  if (format === 'singles') {
+    // 1 vs 1
+    const isOdd = pool.length % 2 !== 0;
+    const matchCount = Math.floor(pool.length / 2);
+    for (let i = 0; i < matchCount; i++) {
+      matches.push({
+        type: 'singles',
+        player1: pool[i * 2],
+        player2: pool[i * 2 + 1]
+      });
     }
-  });
+    if (isOdd) {
+      waiting.push(pool[pool.length - 1]);
+    }
+  } else {
+    // Doubles: 2 vs 2 (each team is a pair of 2 players, match has 4 players)
+    const matchCount = Math.floor(pool.length / 4);
+    const activePlayersCount = matchCount * 4;
+    
+    // Active players pool
+    const activePool = pool.slice(0, activePlayersCount);
+    // Rest of the players are waiting
+    const restPool = pool.slice(activePlayersCount);
+    waiting.push(...restPool);
 
-  renderPairingResult(teamA, teamB);
+    if (algo === 'balanced') {
+      // For each group of 4 players, pair: (1st + 4th) vs (2nd + 3rd)
+      for (let i = 0; i < matchCount; i++) {
+        const group = activePool.slice(i * 4, (i + 1) * 4);
+        matches.push({
+          type: 'doubles',
+          team1: [group[0], group[3]], // strong + weak
+          team2: [group[1], group[2]]  // mid + mid
+        });
+      }
+    } else {
+      // Random matching: group of 4 players -> (p0 + p1) vs (p2 + p3)
+      for (let i = 0; i < matchCount; i++) {
+        const group = activePool.slice(i * 4, (i + 1) * 4);
+        matches.push({
+          type: 'doubles',
+          team1: [group[0], group[1]],
+          team2: [group[2], group[3]]
+        });
+      }
+    }
+  }
+
+  renderPairingResult(matches, waiting);
 }
 
-function renderPairingResult(teamA, teamB) {
+function renderPairingResult(matches, waiting) {
   const resultDiv = document.getElementById('pairing-result');
   const actionsDiv = document.getElementById('pairing-actions');
   if (!resultDiv) return;
 
-  resultDiv.style.display = 'grid';
+  resultDiv.style.display = 'flex';
   if (actionsDiv) actionsDiv.style.display = 'block';
 
-  document.getElementById('team-a-count').textContent = `${teamA.length} người chơi`;
-  document.getElementById('team-b-count').textContent = `${teamB.length} người chơi`;
+  let html = '';
 
-  const renderPlayers = (list) => list.map(p => {
-    const initials = p.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
-    const avatarHtml = p.logo
-      ? `<img class="team-logo-img" src="${p.logo}" alt="${escapeHTML(p.name)}">`
-      : `<div class="team-logo-placeholder">${initials}</div>`;
-    return `
-      <div class="team-player-item">
-        ${avatarHtml}
-        <div>
-          <div class="team-player-name">${escapeHTML(p.name)}</div>
-          <div class="team-player-meta">Hạng #${p.rank} · ${p.points}đ</div>
+  // Title
+  html += `
+    <div class="matchups-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Danh Sách Cặp Đấu Đã Chia
+    </div>
+    <div class="matchup-grid">
+  `;
+
+  // Render matches
+  matches.forEach((match, index) => {
+    if (match.type === 'singles') {
+      const p1 = match.player1;
+      const p2 = match.player2;
+      
+      const initials1 = p1.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml1 = p1.logo
+        ? `<img class="team-logo-img" src="${p1.logo}" alt="${escapeHTML(p1.name)}">`
+        : `<div class="team-logo-placeholder">${initials1}</div>`;
+
+      const initials2 = p2.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml2 = p2.logo
+        ? `<img class="team-logo-img" src="${p2.logo}" alt="${escapeHTML(p2.name)}">`
+        : `<div class="team-logo-placeholder">${initials2}</div>`;
+
+      html += `
+        <div class="matchup-card">
+          <div class="matchup-header">
+            <span>Trận Đấu Đơn #${index + 1}</span>
+            <span class="matchup-header-badge">1 vs 1</span>
+          </div>
+          <div class="matchup-body">
+            <div class="matchup-side">
+              <div class="matchup-player-item">
+                ${avatarHtml1}
+                <div>
+                  <div class="matchup-player-name">${escapeHTML(p1.name)}</div>
+                  <div class="matchup-player-meta">Hạng #${p1.rank} · ${p1.points}đ</div>
+                </div>
+              </div>
+            </div>
+            <div class="matchup-vs">VS</div>
+            <div class="matchup-side">
+              <div class="matchup-player-item">
+                ${avatarHtml2}
+                <div>
+                  <div class="matchup-player-name">${escapeHTML(p2.name)}</div>
+                  <div class="matchup-player-meta">Hạng #${p2.rank} · ${p2.points}đ</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>`;
-  }).join('');
+      `;
+    } else {
+      // Doubles
+      const t1p1 = match.team1[0];
+      const t1p2 = match.team1[1];
+      const t2p1 = match.team2[0];
+      const t2p2 = match.team2[1];
 
-  document.getElementById('team-a-players').innerHTML = renderPlayers(teamA);
-  document.getElementById('team-b-players').innerHTML = renderPlayers(teamB);
+      const renderPlayerRow = (p) => {
+        const initials = p.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        const avatarHtml = p.logo
+          ? `<img class="team-logo-img" src="${p.logo}" alt="${escapeHTML(p.name)}">`
+          : `<div class="team-logo-placeholder">${initials}</div>`;
+        return `
+          <div class="matchup-player-item">
+            ${avatarHtml}
+            <div>
+              <div class="matchup-player-name">${escapeHTML(p.name)}</div>
+              <div class="matchup-player-meta">Hạng #${p.rank} · ${p.points}đ</div>
+            </div>
+          </div>
+        `;
+      };
 
+      html += `
+        <div class="matchup-card">
+          <div class="matchup-header">
+            <span>Trận Đấu Đôi #${index + 1}</span>
+            <span class="matchup-header-badge">2 vs 2</span>
+          </div>
+          <div class="matchup-body">
+            <div class="matchup-side">
+              ${renderPlayerRow(t1p1)}
+              ${renderPlayerRow(t1p2)}
+            </div>
+            <div class="matchup-vs">VS</div>
+            <div class="matchup-side">
+              ${renderPlayerRow(t2p1)}
+              ${renderPlayerRow(t2p2)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  html += `</div>`; // Close matchup-grid
+
+  // Render waiting list
+  if (waiting.length > 0) {
+    html += `
+      <div class="waiting-list-card">
+        <div class="waiting-list-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Thành Viên Chờ Đấu / Nghỉ Vòng Này (${waiting.length})
+        </div>
+        <div class="waiting-players-grid">
+    `;
+
+    waiting.forEach(p => {
+      const initials = p.name.split(' ').filter(w => w).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml = p.logo
+        ? `<img class="team-logo-img" src="${p.logo}" alt="${escapeHTML(p.name)}">`
+        : `<div class="team-logo-placeholder">${initials}</div>`;
+      html += `
+        <div class="waiting-player-item">
+          ${avatarHtml}
+          <div>
+            <div class="matchup-player-name">${escapeHTML(p.name)}</div>
+            <div class="matchup-player-meta">Hạng #${p.rank} · ${p.points}đ</div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  resultDiv.innerHTML = html;
   resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// Bind to window for global inline handlers
+window.togglePlayerSelection = togglePlayerSelection;
+window.clearSelection = clearSelection;
+window.onPairingFormatChange = onPairingFormatChange;
+window.doPairingIfResultVisible = doPairingIfResultVisible;
+window.doPairing = doPairing;
 
 // Utilities
 function escapeHTML(str) {
